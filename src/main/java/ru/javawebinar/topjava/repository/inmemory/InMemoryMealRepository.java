@@ -1,0 +1,55 @@
+package ru.javawebinar.topjava.repository.inmemory;
+
+import ru.javawebinar.topjava.model.Meal;
+import ru.javawebinar.topjava.repository.MealRepository;
+import ru.javawebinar.topjava.util.MealsUtil;
+import ru.javawebinar.topjava.web.SecurityUtil;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static ru.javawebinar.topjava.repository.inmemory.InMemoryUserRepository.USER_ID;
+
+public class InMemoryMealRepository implements MealRepository {
+    private final Map<Integer, Map<Integer, Meal>> userMealsMap = new ConcurrentHashMap<>();
+
+
+    private final AtomicInteger counter = new AtomicInteger(0);
+
+    {
+        userMealsMap.put(SecurityUtil.authUserId(), new HashMap<>());
+        MealsUtil.meals.forEach(meal -> save(meal, USER_ID));
+    }
+
+    @Override
+    public Meal save(Meal meal, int userId) {
+        Map<Integer, Meal> meals;
+        meals = userMealsMap.containsKey(userId) ? userMealsMap.get(userId) : new ConcurrentHashMap<>();
+        if (meal.isNew()) {
+            meal.setId(counter.incrementAndGet());
+            userMealsMap.get(userId).put(meal.getId(), meal);
+            return meal;
+        }
+        // handle case: update, but not present in storage
+        return userMealsMap.get(userId).computeIfPresent(meal.getId(), (id, oldMeal) -> meal);
+    }
+
+    @Override
+    public boolean delete(int id, int userId) {
+        return userMealsMap.get(SecurityUtil.authUserId()).remove(id) != null;
+    }
+
+    @Override
+    public Meal get(int id, int userId) {
+        return userMealsMap.get(userId) == null ? null : userMealsMap.get(userId).get(id);
+    }
+
+    @Override
+    public Collection<Meal> getAll(int userId) {
+        return userMealsMap.get(SecurityUtil.authUserId()).values();
+    }
+}
+
