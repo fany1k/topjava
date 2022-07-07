@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static ru.javawebinar.topjava.repository.inmemory.InMemoryUserRepository.USER_ID;
+
 @Repository
 
 public class InMemoryMealRepository implements MealRepository {
@@ -24,6 +25,8 @@ public class InMemoryMealRepository implements MealRepository {
     {
         userMealsMap.put(SecurityUtil.authUserId(), new HashMap<>());
         MealsUtil.meals.forEach(meal -> save(meal, USER_ID));
+
+
     }
 
     @Override
@@ -35,6 +38,7 @@ public class InMemoryMealRepository implements MealRepository {
             meals.put(meal.getId(), meal);
             return meal;
         }
+
         // handle case: update, but not present in storage
         return meals.computeIfPresent(meal.getId(), (id, oldMeal) -> meal);
     }
@@ -53,7 +57,8 @@ public class InMemoryMealRepository implements MealRepository {
 
     @Override
     public Collection<Meal> getAll(int userId) {
-        Map<Integer, Meal> meals = userMealsMap.get(userId);
+        Map<Integer, Meal> meals = userMealsMap.get(SecurityUtil.authUserId());
+        meals.values().forEach(System.out::println);
         return CollectionUtils.isEmpty(meals) ? Collections.emptyList() :
                 meals.values().stream()
                         .sorted(Comparator.comparing(Meal::getDateTime).reversed())
